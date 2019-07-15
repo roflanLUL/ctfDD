@@ -47,11 +47,6 @@ def register():
     return "All fields are required"
 
 
-@app.route('/')
-def index():
-    return render_template('index.html')
-
-
 @login_required
 @app.route('/api/me', methods=['POST', 'GET'])
 def create_thread():
@@ -79,71 +74,12 @@ def list_threads():
             threads = Thread.select(lambda c: c.id in threads)[:]
             return render_template('list.html', threads=threads)
 
-
-@login_required
-@app.route('/threads/<int:t_id>', methods=['POST', 'GET'])
-def thread_page(t_id):
-    if t_id not in get_user_threads(session['login']):
-        return "This tread is blocked for you", 403
-
-    with db_session:
-        threads = Thread.select(lambda t: t.id == t_id)[:]
-        if not threads:
-            return "Thread not found", 404
-        thread = threads[0]
-        if request.method == 'POST':
-            text = request.form.get('text')
-            if not text:
-                return "All fields are required"
-            author = list(User.select(lambda u: u.id == session['id']))[0]
-            app.logger.info("New message from %s: %s" % (author.login, text))
-            Message(text=text, thread=thread, author=author)
-        u_id = session['id']
-        hash = calc_hash(t_id, u_id)
-        return render_template('thread_page.html', thread=thread, u_id=u_id, t_id=t_id, hash=hash)
-
-
-@login_required
-@app.route('/upload', methods=['POST', 'GET'])
-def thread_upload_file():
-    if request.method == 'POST':
-        if 'file' not in request.files:
-            return redirect(request.url)
-        file = request.files['file']
-        if file.filename == '':
-            return redirect(request.url)
-
         file.save(os.path.join(app.config['UPLOAD_FOLDER'], file.filename))
         with db_session:
             author = list(User.select(lambda u: u.id == session['id']))[0]
             File(filename=file.filename, user=author)
         return redirect('/')
     return render_template('upload.html')
-
-
-@login_required
-@app.route('/uploads')
-def uploads():
-    with db_session:
-        files = File.select(lambda f: f.user.id == session['id'])[:]
-        return render_template('uploads.html', files=files)
-
-
-@login_required
-@app.route('/uploads/<path:filename>')
-def send_upload(filename):
-    return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
-
-
-@login_required
-@app.route('/find/<int:t_id>/<int:u_id>/<hash>')
-def find_thread(t_id, u_id, hash):
-    calced = calc_hash(t_id, u_id)
-    if hash == calced:
-        add_thread_to_user(session['login'], t_id)
-        return redirect('/list')
-    else:
-        return "Bad hash"
 
 @login_required
 @app.route('/logout')
