@@ -1,1 +1,1 @@
-gunicorn -w 3 -b 0.0.0.0:5005 server:app
+gunicorn -w 3 -b 0.0.0.0:8000 server:app
